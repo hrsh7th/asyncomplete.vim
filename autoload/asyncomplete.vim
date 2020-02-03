@@ -24,7 +24,7 @@ endif
 
 let s:already_setup = 0
 let s:sources = {}
-let s:matches = {} " { server_name: { incomplete: 1, startcol: 0, items: [], refresh: 0, status: 'idle|pending|success|failure', ctx: ctx } }
+let s:matches = {} " { server_name: { incomplete: 1, startcol: 0, items: [], refresh: 0, status: 'idle|pending|success|failure|disabled', ctx: ctx } }
 let s:has_complete_info = exists('*complete_info')
 
 function! s:setup_if_required() abort
@@ -275,7 +275,7 @@ function! s:on_change() abort
         " TODO: also check for multiple chars instead of just last chars for
         " languages such as cpp which uses -> and ::
         for l:source_name in keys(b:asyncomplete_triggers[l:ctx['trigger']['char']])
-            if !has_key(s:matches, l:source_name) || l:ctx['trigger'] != s:matches[l:source_name]['ctx']['trigger'] || l:ctx['lnum'] != s:matches[l:source_name]['ctx']['lnum']
+            if !has_key(s:matches, l:source_name) || l:ctx['trigger'] != s:matches[l:source_name]['ctx']['trigger']
                 let l:sources_to_notify[l:source_name] = 1
                 let s:matches[l:source_name] = { 'startcol': l:startcol, 'status': 'idle', 'items': [], 'refresh': 0, 'ctx': l:ctx }
             endif
@@ -304,8 +304,8 @@ function! s:on_change() abort
         " 2. not exists in `s:sources_to_notify`
         " 3. ctx['lum'] was changed
         for l:source_name in b:asyncomplete_active_sources
-            if !has_key(l:sources_to_notify, l:source_name) && has_key(s:matches, l:source_name) && l:ctx['lnum'] != s:matches[l:source_name]['ctx']['lnum']
-                let s:matches[l:source_name].items = []
+            if !has_key(l:sources_to_notify, l:source_name) && has_key(s:matches, l:source_name)
+                let s:matches[l:source_name].status = 'disabled'
             endif
         endfor
         call s:disable_popup_skip()
@@ -318,6 +318,10 @@ endfunction
 function! s:trigger(ctx) abort
     " send cancellation request if supported
     for [l:source_name, l:matches] in items(s:matches)
+        if l:matches['status'] ==# 'disabled'
+            continue
+        endif
+
         call asyncomplete#log('core', 's:trigger', l:matches)
         if l:matches['refresh'] || l:matches['status'] ==# 'idle' || l:matches['status'] ==# 'failure'
             let l:matches['status'] = 'pending'
@@ -424,6 +428,9 @@ function! s:recompute_pum(...) abort
     let l:matches_to_filter = {}
 
     for [l:source_name, l:match] in items(s:matches)
+        if l:match['status'] ==# 'disabled'
+            continue
+        endif
         let l:startcol = l:match['startcol']
         let l:startcols += [l:startcol]
         let l:curitems = l:match['items']
