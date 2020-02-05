@@ -291,7 +291,7 @@ function! s:on_change() abort
         if s:should_skip_popup() | return | endif
         for l:source_name in b:asyncomplete_active_sources
             if !has_key(l:sources_to_notify, l:source_name)
-                if has_key(s:matches, l:source_name) && s:matches[l:source_name]['ctx']['lnum'] ==# l:ctx['lnum'] && s:matches[l:source_name]['startcol'] ==# l:startcol
+                if has_key(s:matches, l:source_name) && s:matches[l:source_name]['status'] ==# 'success' && s:matches[l:source_name]['ctx']['lnum'] ==# l:ctx['lnum'] && s:matches[l:source_name]['startcol'] ==# l:startcol
                     continue
                 endif
                 let l:sources_to_notify[l:source_name] = 1
